@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Afterlife — 사후 체크리스트",
-  description: "사망 후 남겨진 사람과 당사자를 위한 체크리스트",
+  title: "FADE — 사후 체크리스트",
+  description: "떠나기 전에, 그리고 떠난 뒤에 해야 할 일들을 정리하는 체크리스트",
 };
 
 export default function RootLayout({

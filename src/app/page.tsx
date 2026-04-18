@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Topbar } from "@/components/Topbar";
 import { GlassCard } from "@/components/GlassCard";
 import { ChecklistBoard } from "@/components/ChecklistBoard";
+import { Wordmark } from "@/components/Wordmark";
 
 export default function Dashboard() {
   return (
@@ -14,10 +15,8 @@ export default function Dashboard() {
           <div className="absolute bottom-0 left-1/3 size-48 rounded-full bg-black/5 blur-3xl" />
         </div>
         <div className="relative">
-          <p className="text-[11px] tracking-[0.2em] uppercase text-[var(--muted)] mb-3">
-            Afterlife Checklist
-          </p>
-          <h1 className="text-[30px] md:text-[36px] font-semibold tracking-tight leading-tight max-w-[640px]">
+          <Wordmark size="xl" className="block mb-6" />
+          <h1 className="text-[24px] md:text-[28px] font-semibold tracking-tight leading-tight max-w-[640px]">
             떠나기 전에, 그리고 떠난 뒤에
             <br />
             해야 할 일들을 차근차근
