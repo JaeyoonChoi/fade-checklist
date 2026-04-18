@@ -7,10 +7,16 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import {
   Checklist,
   ChecklistItem,
+  PHASES,
+  PHASE_LABEL,
+  Phase,
   ensureChecklistForSession,
+  phaseRank,
   toggleItem,
 } from "@/lib/checklists";
 import { getOrCreateSessionId, isUuid, setSessionId } from "@/lib/session";
+
+type ViewMode = "category" | "timeline";
 
 type Props = {
   mode: "preview" | "full";
@@ -25,6 +31,7 @@ export function ChecklistBoard({ mode, forcedSessionId }: Props) {
     configured ? "loading" : "idle"
   );
   const [error, setError] = useState<string>("");
+  const [viewMode, setViewMode] = useState<ViewMode>("category");
 
   useEffect(() => {
     if (!configured) return;
@@ -57,12 +64,23 @@ export function ChecklistBoard({ mode, forcedSessionId }: Props) {
     }
   }, [configured, forcedSessionId]);
 
+  const sortedByPhase = useMemo(() => {
+    if (!checklist) return [] as ChecklistItem[];
+    return [...checklist.items].sort((a, b) => {
+      const pa = phaseRank(a.phase);
+      const pb = phaseRank(b.phase);
+      if (pa !== pb) return pa - pb;
+      return a.sort_order - b.sort_order;
+    });
+  }, [checklist]);
+
   const visibleItems = useMemo(() => {
     if (!checklist) return [];
-    return mode === "preview" ? checklist.items.slice(0, 5) : checklist.items;
-  }, [checklist, mode]);
+    if (mode === "preview") return sortedByPhase.slice(0, 5);
+    return checklist.items;
+  }, [checklist, mode, sortedByPhase]);
 
-  const grouped = useMemo(() => {
+  const categoryGroups = useMemo(() => {
     if (mode !== "full" || !checklist) return null;
     const map = new Map<string, ChecklistItem[]>();
     for (const it of checklist.items) {
@@ -71,6 +89,22 @@ export function ChecklistBoard({ mode, forcedSessionId }: Props) {
     }
     return Array.from(map.entries());
   }, [checklist, mode]);
+
+  const timelineGroups = useMemo(() => {
+    if (mode !== "full" || !checklist) return null;
+    const map = new Map<Phase, ChecklistItem[]>();
+    for (const it of sortedByPhase) {
+      const key = it.phase;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(it);
+    }
+    return PHASES.filter((p) => map.has(p.key)).map((p) => ({
+      key: p.key,
+      label: p.label,
+      hint: p.hint,
+      items: map.get(p.key)!,
+    }));
+  }, [checklist, mode, sortedByPhase]);
 
   const total = checklist?.items.length ?? 0;
   const done = checklist?.items.filter((i) => i.completed).length ?? 0;
@@ -176,9 +210,13 @@ export function ChecklistBoard({ mode, forcedSessionId }: Props) {
           </div>
         )}
 
-        {grouped ? (
+        {mode === "full" && (
+          <ViewToggle value={viewMode} onChange={setViewMode} />
+        )}
+
+        {mode === "full" && viewMode === "category" && categoryGroups ? (
           <div className="flex flex-col gap-6">
-            {grouped.map(([cat, list]) => (
+            {categoryGroups.map(([cat, list]) => (
               <section key={cat}>
                 <div className="flex items-center justify-between px-1 mb-3">
                   <h3 className="text-[15px] font-semibold tracking-tight">
@@ -194,9 +232,49 @@ export function ChecklistBoard({ mode, forcedSessionId }: Props) {
                       key={item.id}
                       item={item}
                       onToggle={handleToggle}
+                      showPhase
                     />
                   ))}
                 </GlassCard>
+              </section>
+            ))}
+          </div>
+        ) : mode === "full" && viewMode === "timeline" && timelineGroups ? (
+          <div className="flex flex-col gap-6">
+            {timelineGroups.map((grp, idx) => (
+              <section key={grp.key} className="flex gap-4">
+                <div className="flex flex-col items-center pt-1 shrink-0">
+                  <div className="size-3 rounded-full bg-[var(--text)] shrink-0" />
+                  {idx < timelineGroups.length - 1 && (
+                    <div className="w-px flex-1 bg-[var(--border-strong)] mt-1" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0 pb-2">
+                  <div className="flex items-baseline justify-between px-1 mb-3">
+                    <div className="flex items-baseline gap-2">
+                      <h3 className="text-[15px] font-semibold tracking-tight">
+                        {grp.label}
+                      </h3>
+                      <span className="text-[11px] text-[var(--muted-soft)]">
+                        {grp.hint}
+                      </span>
+                    </div>
+                    <span className="text-[12px] text-[var(--muted)]">
+                      {grp.items.filter((it) => it.completed).length} /{" "}
+                      {grp.items.length}
+                    </span>
+                  </div>
+                  <GlassCard className="divide-y divide-[var(--border)]">
+                    {grp.items.map((item) => (
+                      <ItemRow
+                        key={item.id}
+                        item={item}
+                        onToggle={handleToggle}
+                        showCategory
+                      />
+                    ))}
+                  </GlassCard>
+                </div>
               </section>
             ))}
           </div>
@@ -208,6 +286,7 @@ export function ChecklistBoard({ mode, forcedSessionId }: Props) {
                 item={item}
                 onToggle={handleToggle}
                 showCategory
+                showPhase
               />
             ))}
           </GlassCard>
@@ -244,14 +323,50 @@ function SetupNotice({
   );
 }
 
+function ViewToggle({
+  value,
+  onChange,
+}: {
+  value: ViewMode;
+  onChange: (v: ViewMode) => void;
+}) {
+  const options: { key: ViewMode; label: string }[] = [
+    { key: "category", label: "카테고리" },
+    { key: "timeline", label: "타임라인" },
+  ];
+  return (
+    <div className="mb-4 inline-flex hairline border rounded-full p-1 bg-[var(--surface)]">
+      {options.map((opt) => {
+        const active = value === opt.key;
+        return (
+          <button
+            key={opt.key}
+            type="button"
+            onClick={() => onChange(opt.key)}
+            className={`px-4 h-8 rounded-full text-[12px] font-medium transition-colors ${
+              active
+                ? "bg-[var(--text)] text-[var(--accent-contrast)]"
+                : "text-[var(--muted)] hover:text-[var(--text)]"
+            }`}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function ItemRow({
   item,
   onToggle,
   showCategory = false,
+  showPhase = false,
 }: {
   item: ChecklistItem;
   onToggle: (id: string) => void;
   showCategory?: boolean;
+  showPhase?: boolean;
 }) {
   return (
     <div
@@ -294,6 +409,11 @@ function ItemRow({
           {showCategory && (
             <span className="text-[10px] tracking-[0.1em] uppercase px-2 py-0.5 rounded-full hairline border text-[var(--muted)]">
               {item.category}
+            </span>
+          )}
+          {showPhase && (
+            <span className="text-[10px] tracking-[0.02em] px-2 py-0.5 rounded-full bg-black/5 text-[var(--text-soft)]">
+              {PHASE_LABEL[item.phase] ?? item.phase}
             </span>
           )}
           <span

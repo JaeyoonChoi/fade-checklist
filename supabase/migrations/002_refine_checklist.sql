@@ -1,47 +1,14 @@
--- Afterlife Checklist — Supabase schema
--- Run this in Supabase SQL Editor once per project.
+-- 002: 체크리스트 항목 재구성
+--   사망 직후 ~ 장례 / 사망신고 / 1~3개월 / 3~6개월 구조로 정리
+--   주의: 기존 체크리스트의 체크 상태는 모두 초기화됩니다.
+--   (phase 컬럼이 없어도 동작하도록 idempotent)
 
--- 1. 체크리스트 루트 (세션당 1개 이상)
-create table if not exists checklists (
-  id uuid primary key default gen_random_uuid(),
-  session_id uuid not null,
-  title text not null default '사후 체크리스트',
-  created_at timestamptz not null default now()
-);
-create index if not exists idx_checklists_session on checklists(session_id);
+alter table checklist_items
+  add column if not exists phase text not null default 'month';
+create index if not exists idx_items_phase
+  on checklist_items(checklist_id, phase);
 
--- 2. 체크리스트 항목
-create table if not exists checklist_items (
-  id uuid primary key default gen_random_uuid(),
-  checklist_id uuid not null references checklists(id) on delete cascade,
-  category text not null default '기타',
-  phase text not null default 'month',
-  title text not null,
-  description text not null default '',
-  completed boolean not null default false,
-  sort_order int not null default 0,
-  created_at timestamptz not null default now()
-);
-create index if not exists idx_items_checklist on checklist_items(checklist_id);
-create index if not exists idx_items_sort on checklist_items(checklist_id, sort_order);
-create index if not exists idx_items_phase on checklist_items(checklist_id, phase);
-
--- 3. RLS: 인증 없음 → anon key로 전체 읽기/쓰기 허용
---   공유는 session_id 기반, 실제 서비스에선 세션 id 유출시 누구나 수정 가능함을 유의.
-alter table checklists enable row level security;
-alter table checklist_items enable row level security;
-
-drop policy if exists "public read checklists" on checklists;
-drop policy if exists "public write checklists" on checklists;
-drop policy if exists "public read items" on checklist_items;
-drop policy if exists "public write items" on checklist_items;
-
-create policy "public read checklists" on checklists for select using (true);
-create policy "public write checklists" on checklists for all using (true) with check (true);
-create policy "public read items" on checklist_items for select using (true);
-create policy "public write items" on checklist_items for all using (true) with check (true);
-
--- 4. 기본 항목 삽입 헬퍼
+-- 기본 항목 삽입 헬퍼
 create or replace function _insert_default_items(p_checklist_id uuid)
 returns void
 language plpgsql
@@ -69,7 +36,7 @@ begin
 end;
 $$;
 
--- 5. 기본 더미 데이터 삽입 함수 (신규 세션 초기화에 사용)
+-- seed 함수 갱신
 create or replace function seed_default_checklist(p_session_id uuid)
 returns uuid
 language plpgsql
@@ -85,3 +52,14 @@ begin
   return v_checklist_id;
 end;
 $$;
+
+-- 기존 체크리스트를 새 항목으로 재시드 (체크 상태 초기화)
+delete from checklist_items;
+do $$
+declare
+  r record;
+begin
+  for r in select id from checklists loop
+    perform _insert_default_items(r.id);
+  end loop;
+end $$;
