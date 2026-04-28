@@ -90,22 +90,23 @@ export function ChecklistBoard({ mode }: Props) {
   const done = checklist?.items.filter((i) => i.completed).length ?? 0;
 
   async function handleToggle(id: string) {
-    let nextValue: boolean | null = null;
-    let prevValue: boolean | null = null;
-    setChecklist((cur) => {
-      if (!cur) return cur;
-      const target = cur.items.find((i) => i.id === id);
-      if (!target) return cur;
-      prevValue = target.completed;
-      nextValue = !target.completed;
-      return {
-        ...cur,
-        items: cur.items.map((it) =>
-          it.id === id ? { ...it, completed: nextValue! } : it
-        ),
-      };
-    });
-    if (nextValue === null) return;
+    if (!checklist) return;
+    const target = checklist.items.find((i) => i.id === id);
+    if (!target) return;
+    const prevValue = target.completed;
+    const nextValue = !prevValue;
+
+    setChecklist((cur) =>
+      cur
+        ? {
+            ...cur,
+            items: cur.items.map((it) =>
+              it.id === id ? { ...it, completed: nextValue } : it
+            ),
+          }
+        : cur
+    );
+
     try {
       await toggleItem(id, nextValue);
     } catch (e) {
@@ -114,7 +115,7 @@ export function ChecklistBoard({ mode }: Props) {
           ? {
               ...cur,
               items: cur.items.map((it) =>
-                it.id === id ? { ...it, completed: prevValue! } : it
+                it.id === id ? { ...it, completed: prevValue } : it
               ),
             }
           : cur
@@ -400,6 +401,33 @@ function ItemRow({
           >
             {item.title}
           </span>
+          {item.link_url && (
+            <a
+              href={item.link_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1 text-[11px] text-[var(--muted)] hover:text-[var(--text)] underline-offset-2 hover:underline"
+              aria-label={`${item.title} 관련 사이트 열기`}
+            >
+              바로가기
+              <svg
+                width="11"
+                height="11"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M7 17 17 7" />
+                <path d="M8 7h9v9" />
+              </svg>
+            </a>
+          )}
         </div>
         <p className="text-[13px] text-[var(--muted)] leading-relaxed">
           {item.description}

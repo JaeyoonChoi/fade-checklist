@@ -38,6 +38,7 @@ export type ChecklistItem = {
   description: string;
   completed: boolean;
   sort_order: number;
+  link_url: string | null;
 };
 
 export type Checklist = {
@@ -95,7 +96,7 @@ async function fetchItems(checklistId: string): Promise<ChecklistItem[]> {
   const sb = getSupabase();
   const { data, error } = await sb
     .from("checklist_items")
-    .select("id, checklist_id, category, phase, title, description, completed, sort_order")
+    .select("id, checklist_id, category, phase, title, description, completed, sort_order, link_url")
     .eq("checklist_id", checklistId)
     .order("sort_order", { ascending: true });
   if (error) throw error;
@@ -124,6 +125,7 @@ export async function addItem(input: {
   title: string;
   description?: string;
   sort_order?: number;
+  link_url?: string | null;
 }) {
   const sb = getSupabase();
   const { data, error } = await sb
@@ -135,6 +137,7 @@ export async function addItem(input: {
       title: input.title,
       description: input.description ?? "",
       sort_order: input.sort_order ?? 999,
+      link_url: input.link_url ?? null,
     })
     .select()
     .single();
@@ -150,7 +153,7 @@ export async function removeItem(itemId: string) {
 
 export async function updateItem(
   itemId: string,
-  patch: Partial<Pick<ChecklistItem, "title" | "description" | "category" | "phase" | "sort_order">>
+  patch: Partial<Pick<ChecklistItem, "title" | "description" | "category" | "phase" | "sort_order" | "link_url">>
 ) {
   const sb = getSupabase();
   const { error } = await sb
