@@ -23,7 +23,8 @@ export default function Dashboard() {
           </h1>
           <p className="text-[14px] text-[var(--muted)] mt-4 max-w-[560px] leading-relaxed">
             행정·금융·디지털 자산까지 — 혼란스러운 순간에도 놓치지 않도록 정리된
-            체크리스트를 제공합니다. 상태는 자동 저장되고 URL로 공유할 수 있어요.
+            체크리스트를 제공합니다. 로그인하면 어디서든 같은 체크리스트를 이어볼
+            수 있어요.
           </p>
           <div className="mt-6 flex gap-3">
             <Link

@@ -42,20 +42,27 @@ export type ChecklistItem = {
 
 export type Checklist = {
   id: string;
-  session_id: string;
+  user_id: string;
   title: string;
   items: ChecklistItem[];
 };
 
-export async function ensureChecklistForSession(
-  sessionId: string
-): Promise<Checklist> {
+async function requireUserId(): Promise<string> {
   const sb = getSupabase();
+  const { data, error } = await sb.auth.getUser();
+  if (error) throw error;
+  if (!data.user) throw new Error("로그인이 필요합니다.");
+  return data.user.id;
+}
+
+export async function ensureChecklist(): Promise<Checklist> {
+  const sb = getSupabase();
+  const userId = await requireUserId();
 
   const { data: existing, error: fetchErr } = await sb
     .from("checklists")
-    .select("id, session_id, title")
-    .eq("session_id", sessionId)
+    .select("id, user_id, title")
+    .eq("user_id", userId)
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();
@@ -68,14 +75,14 @@ export async function ensureChecklistForSession(
 
   const { data: seeded, error: seedErr } = await sb.rpc(
     "seed_default_checklist",
-    { p_session_id: sessionId }
+    { p_user_id: userId }
   );
   if (seedErr) throw seedErr;
 
   const checklistId = seeded as string;
   const { data: row, error: rowErr } = await sb
     .from("checklists")
-    .select("id, session_id, title")
+    .select("id, user_id, title")
     .eq("id", checklistId)
     .single();
   if (rowErr) throw rowErr;
@@ -97,11 +104,17 @@ async function fetchItems(checklistId: string): Promise<ChecklistItem[]> {
 
 export async function toggleItem(itemId: string, completed: boolean) {
   const sb = getSupabase();
-  const { error } = await sb
+  const { data, error } = await sb
     .from("checklist_items")
     .update({ completed })
-    .eq("id", itemId);
+    .eq("id", itemId)
+    .select("id");
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error(
+      "체크 상태가 저장되지 않았습니다 (RLS 또는 항목 ID 불일치). 마이그레이션 004/005가 적용되었는지 확인해주세요."
+    );
+  }
 }
 
 export async function addItem(input: {

@@ -26,6 +26,24 @@ create index if not exists idx_items_checklist on checklist_items(checklist_id);
 create index if not exists idx_items_sort on checklist_items(checklist_id, sort_order);
 create index if not exists idx_items_phase on checklist_items(checklist_id, phase);
 
+-- 2-b. 사용자 프로필 (맞춤 체크리스트 생성용 입력값)
+create table if not exists user_profiles (
+  id uuid primary key default gen_random_uuid(),
+  session_id uuid not null unique,
+  current_age_bracket text,
+  expected_death_bracket text,
+  real_estate_bracket text,
+  financial_assets text,
+  life_insurance_bracket text,
+  marital_status text,
+  spouse jsonb,
+  children jsonb not null default '[]'::jsonb,
+  grandchildren jsonb not null default '[]'::jsonb,
+  other_notes text,
+  updated_at timestamptz not null default now()
+);
+create index if not exists idx_profiles_session on user_profiles(session_id);
+
 -- 3. RLS: 인증 없음 → anon key로 전체 읽기/쓰기 허용
 --   공유는 session_id 기반, 실제 서비스에선 세션 id 유출시 누구나 수정 가능함을 유의.
 alter table checklists enable row level security;
@@ -40,6 +58,12 @@ create policy "public read checklists" on checklists for select using (true);
 create policy "public write checklists" on checklists for all using (true) with check (true);
 create policy "public read items" on checklist_items for select using (true);
 create policy "public write items" on checklist_items for all using (true) with check (true);
+
+alter table user_profiles enable row level security;
+drop policy if exists "public read profiles" on user_profiles;
+drop policy if exists "public write profiles" on user_profiles;
+create policy "public read profiles"  on user_profiles for select using (true);
+create policy "public write profiles" on user_profiles for all using (true) with check (true);
 
 -- 4. 기본 항목 삽입 헬퍼
 create or replace function _insert_default_items(p_checklist_id uuid)

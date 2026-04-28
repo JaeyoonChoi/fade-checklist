@@ -1,13 +1,50 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Wordmark } from "./Wordmark";
+import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 
 const NAV = [
-  { href: "/", label: "대시보드", hint: "overview" },
-  { href: "/checklist", label: "체크리스트", hint: "list" },
-  { href: "/settings", label: "프롬프트 설정", hint: "prompt" },
+  { href: "/", label: "대시보드" },
+  { href: "/profile", label: "프로필" },
+  { href: "/checklist", label: "체크리스트" },
+  { href: "/settings", label: "프롬프트 설정" },
 ];
 
 export function Sidebar() {
+  const router = useRouter();
+  const configured = isSupabaseConfigured();
+  const [email, setEmail] = useState<string | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
+
+  useEffect(() => {
+    if (!configured) return;
+    const sb = getSupabase();
+    sb.auth.getUser().then(({ data }) => {
+      setEmail(data.user?.email ?? null);
+    });
+    const { data: sub } = sb.auth.onAuthStateChange((_event, session) => {
+      setEmail(session?.user?.email ?? null);
+    });
+    return () => {
+      sub.subscription.unsubscribe();
+    };
+  }, [configured]);
+
+  async function handleSignOut() {
+    if (!configured) return;
+    setSigningOut(true);
+    try {
+      await getSupabase().auth.signOut();
+      router.replace("/login");
+      router.refresh();
+    } finally {
+      setSigningOut(false);
+    }
+  }
+
   return (
     <aside className="w-[240px] shrink-0 px-5 py-7 flex flex-col gap-8">
       <Link href="/" className="flex flex-col gap-2 -ml-0.5">
@@ -36,13 +73,25 @@ export function Sidebar() {
 
       <div className="mt-auto">
         <p className="text-[10px] tracking-[0.18em] text-[var(--muted-soft)] uppercase mb-3 px-2">
-          Session
+          Account
         </p>
-        <div className="rounded-xl hairline border px-3 py-3">
-          <p className="text-[11px] text-[var(--muted)]">세션 ID</p>
-          <p className="text-[12px] font-mono text-[var(--text-soft)] truncate">
-            미생성
+        <div className="rounded-xl hairline border px-3 py-3 flex flex-col gap-2">
+          <p
+            className="text-[12px] text-[var(--text-soft)] truncate"
+            title={email ?? undefined}
+          >
+            {email ?? "로그인 필요"}
           </p>
+          {email && (
+            <button
+              type="button"
+              onClick={handleSignOut}
+              disabled={signingOut}
+              className="self-start text-[11px] text-[var(--muted)] hover:text-[var(--text)] transition-colors disabled:opacity-50"
+            >
+              {signingOut ? "로그아웃 중…" : "로그아웃"}
+            </button>
+          )}
         </div>
       </div>
     </aside>

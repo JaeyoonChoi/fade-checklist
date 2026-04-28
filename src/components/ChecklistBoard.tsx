@@ -4,28 +4,26 @@ import { useEffect, useMemo, useState } from "react";
 import { GlassCard } from "./GlassCard";
 import { StatsPanel } from "./StatsPanel";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import { errorMessage } from "@/lib/error";
 import {
   Checklist,
   ChecklistItem,
   PHASES,
   PHASE_LABEL,
   Phase,
-  ensureChecklistForSession,
+  ensureChecklist,
   phaseRank,
   toggleItem,
 } from "@/lib/checklists";
-import { getOrCreateSessionId, isUuid, setSessionId } from "@/lib/session";
 
 type ViewMode = "category" | "timeline";
 
 type Props = {
   mode: "preview" | "full";
-  forcedSessionId?: string;
 };
 
-export function ChecklistBoard({ mode, forcedSessionId }: Props) {
+export function ChecklistBoard({ mode }: Props) {
   const configured = isSupabaseConfigured();
-  const [sessionId, setSid] = useState<string | null>(null);
   const [checklist, setChecklist] = useState<Checklist | null>(null);
   const [status, setStatus] = useState<"idle" | "loading" | "error">(
     configured ? "loading" : "idle"
@@ -35,34 +33,16 @@ export function ChecklistBoard({ mode, forcedSessionId }: Props) {
 
   useEffect(() => {
     if (!configured) return;
-    try {
-      let sid: string;
-      if (forcedSessionId) {
-        if (!isUuid(forcedSessionId)) {
-          setStatus("error");
-          setError("유효하지 않은 세션 ID 형식입니다.");
-          return;
-        }
-        sid = forcedSessionId;
-        setSessionId(sid);
-      } else {
-        sid = getOrCreateSessionId();
-      }
-      setSid(sid);
-      ensureChecklistForSession(sid)
-        .then((cl) => {
-          setChecklist(cl);
-          setStatus("idle");
-        })
-        .catch((e: unknown) => {
-          setStatus("error");
-          setError(e instanceof Error ? e.message : String(e));
-        });
-    } catch (e) {
-      setStatus("error");
-      setError(e instanceof Error ? e.message : String(e));
-    }
-  }, [configured, forcedSessionId]);
+    ensureChecklist()
+      .then((cl) => {
+        setChecklist(cl);
+        setStatus("idle");
+      })
+      .catch((e: unknown) => {
+        setStatus("error");
+        setError(errorMessage(e));
+      });
+  }, [configured]);
 
   const sortedByPhase = useMemo(() => {
     if (!checklist) return [] as ChecklistItem[];
@@ -140,7 +120,7 @@ export function ChecklistBoard({ mode, forcedSessionId }: Props) {
           : cur
       );
       setStatus("error");
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     }
   }
 
@@ -197,7 +177,7 @@ export function ChecklistBoard({ mode, forcedSessionId }: Props) {
   return (
     <div className="flex gap-6">
       <div className="flex-1 min-w-0">
-        {mode === "preview" && sessionId && (
+        {mode === "preview" && (
           <div className="mb-4 px-1 flex items-center justify-between">
             <div>
               <h2 className="text-[18px] font-semibold tracking-tight">
@@ -292,11 +272,6 @@ export function ChecklistBoard({ mode, forcedSessionId }: Props) {
           </GlassCard>
         )}
 
-        {sessionId && (
-          <p className="text-[11px] text-[var(--muted-soft)] mt-4 px-1 font-mono">
-            세션 {sessionId.slice(0, 8)}… · 공유 URL: /c/{sessionId}
-          </p>
-        )}
       </div>
       <StatsPanel total={total} done={done} />
     </div>
