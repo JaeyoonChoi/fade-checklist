@@ -74,6 +74,84 @@ body {
   border-color: var(--border);
 }
 
+.prose-tax {
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--text-soft);
+}
+.prose-tax h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  margin-top: 1.6em;
+  margin-bottom: 0.6em;
+  letter-spacing: -0.01em;
+}
+.prose-tax h2:first-child {
+  margin-top: 0;
+}
+.prose-tax h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin-top: 1.2em;
+  margin-bottom: 0.4em;
+}
+.prose-tax p {
+  margin: 0.6em 0;
+}
+.prose-tax ul,
+.prose-tax ol {
+  margin: 0.6em 0;
+  padding-left: 1.3em;
+}
+.prose-tax ul {
+  list-style: disc;
+}
+.prose-tax ol {
+  list-style: decimal;
+}
+.prose-tax li {
+  margin: 0.25em 0;
+}
+.prose-tax strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.prose-tax code {
+  background: rgba(0, 0, 0, 0.05);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.prose-tax blockquote {
+  border-left: 2px solid var(--border-strong);
+  padding-left: 0.9em;
+  color: var(--muted);
+  margin: 0.8em 0;
+}
+.prose-tax hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.5em 0;
+}
+.prose-tax table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.8em 0;
+  font-size: 13px;
+}
+.prose-tax th,
+.prose-tax td {
+  border: 1px solid var(--border);
+  padding: 0.5em 0.7em;
+  text-align: left;
+}
+.prose-tax th {
+  background: rgba(0, 0, 0, 0.03);
+  font-weight: 600;
+}
+
 .fade-wordmark {
   background-image: linear-gradient(
     90deg,

@@ -10,6 +10,7 @@ const NAV = [
   { href: "/", label: "대시보드" },
   { href: "/profile", label: "프로필" },
   { href: "/checklist", label: "체크리스트" },
+  { href: "/report", label: "절세 리포트" },
   { href: "/settings", label: "프롬프트 설정" },
 ];
 
