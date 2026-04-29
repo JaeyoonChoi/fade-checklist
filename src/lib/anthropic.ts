@@ -33,7 +33,7 @@ export async function chat(options: ChatOptions): Promise<string> {
     },
     body: JSON.stringify({
       model: options.model ?? "claude-sonnet-4-6",
-      max_tokens: options.maxTokens ?? 4096,
+      max_tokens: options.maxTokens ?? 8192,
       temperature: options.temperature ?? 0.4,
       system: options.system,
       messages: options.messages,
@@ -47,6 +47,7 @@ export async function chat(options: ChatOptions): Promise<string> {
 
   const data = (await res.json()) as {
     content?: { type: string; text?: string }[];
+    stop_reason?: string;
   };
   const text = (data.content ?? [])
     .filter((b) => b.type === "text" && typeof b.text === "string")
@@ -56,6 +57,11 @@ export async function chat(options: ChatOptions): Promise<string> {
 
   if (!text) {
     throw new Error("Anthropic 응답이 비어 있습니다.");
+  }
+  if (data.stop_reason === "max_tokens") {
+    throw new Error(
+      "AI 응답이 토큰 한도(max_tokens)에 걸려 잘렸습니다. max_tokens를 더 늘리거나 프롬프트를 더 짧게 요구하세요."
+    );
   }
   return text;
 }

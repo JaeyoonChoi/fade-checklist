@@ -56,7 +56,7 @@ export async function POST(request: Request) {
     aiText = await chat({
       system: TAX_STRATEGY_SYSTEM,
       messages: [{ role: "user", content: userPrompt }],
-      maxTokens: 4096,
+      maxTokens: 12000,
       temperature: 0.4,
     });
   } catch (e) {
